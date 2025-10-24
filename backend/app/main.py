@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import httpx
 import os
+import re
 from dotenv import load_dotenv
 from typing import List, Optional
 
@@ -20,6 +21,15 @@ app.add_middleware(
 )
 
 sessions_db = {}
+
+def parse_confidence_and_plan(text: str):
+    confidence_match = re.search(r'CONFIDENCE:\s*(\d+)', text, re.IGNORECASE)
+    confidence_score = int(confidence_match.group(1)) if confidence_match else None
+    
+    plan_match = re.search(r'ACTION PLAN:\s*(.+)', text, re.IGNORECASE | re.DOTALL)
+    action_plan = plan_match.group(1).strip() if plan_match else None
+    
+    return confidence_score, action_plan
 
 class Issue(BaseModel):
     number: int
@@ -239,11 +249,41 @@ async def get_session_status(session_id: str, devin_api_key: str):
             response.raise_for_status()
             session_data = response.json()
             
-            return {
+            result = {
                 "session_id": session_id,
                 "status": session_data.get("status", "unknown"),
                 "session_url": f"https://app.devin.ai/sessions/{session_id}",
                 **sessions_db[session_id]
             }
+            
+            if sessions_db[session_id].get("type") == "scope" and "confidence_score" not in sessions_db[session_id]:
+                try:
+                    messages_response = await client.get(
+                        f"https://api.devin.ai/v1/sessions/{session_id}/messages",
+                        headers=devin_headers
+                    )
+                    if messages_response.status_code == 200:
+                        messages_data = messages_response.json()
+                        all_text = ""
+                        for msg in messages_data.get("messages", []):
+                            if msg.get("role") == "assistant":
+                                all_text += msg.get("content", "") + "\n"
+                        
+                        if all_text:
+                            confidence_score, action_plan = parse_confidence_and_plan(all_text)
+                            if confidence_score is not None:
+                                sessions_db[session_id]["confidence_score"] = confidence_score
+                                sessions_db[session_id]["action_plan"] = action_plan
+                                result["confidence_score"] = confidence_score
+                                result["action_plan"] = action_plan
+                except Exception as e:
+                    print(f"Failed to fetch messages: {e}")
+            
+            if "confidence_score" in sessions_db[session_id]:
+                result["confidence_score"] = sessions_db[session_id]["confidence_score"]
+            if "action_plan" in sessions_db[session_id]:
+                result["action_plan"] = sessions_db[session_id]["action_plan"]
+            
+            return result
         except httpx.HTTPError as e:
             raise HTTPException(status_code=500, detail=f"Devin API error: {str(e)}")

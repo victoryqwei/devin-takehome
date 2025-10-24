@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,17 +28,31 @@ interface Session {
   session_url?: string
   repo?: string
   issue_number?: number
+  confidence_score?: number
+  action_plan?: string
 }
 
 function App() {
-  const [repo, setRepo] = useState('')
-  const [githubToken, setGithubToken] = useState('')
-  const [devinApiKey, setDevinApiKey] = useState('')
+  const [repo, setRepo] = useState(() => localStorage.getItem('github_repo') || '')
+  const [githubToken, setGithubToken] = useState(() => localStorage.getItem('github_token') || '')
+  const [devinApiKey, setDevinApiKey] = useState(() => localStorage.getItem('devin_api_key') || '')
   const [issues, setIssues] = useState<Issue[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [sessions, setSessions] = useState<Record<number, Session>>({})
   const [configured, setConfigured] = useState(false)
+
+  useEffect(() => {
+    if (repo) localStorage.setItem('github_repo', repo)
+  }, [repo])
+
+  useEffect(() => {
+    if (githubToken) localStorage.setItem('github_token', githubToken)
+  }, [githubToken])
+
+  useEffect(() => {
+    if (devinApiKey) localStorage.setItem('devin_api_key', devinApiKey)
+  }, [devinApiKey])
 
   const loadIssues = async () => {
     if (!repo || !githubToken) {
@@ -148,7 +162,9 @@ function App() {
     }
   }
 
-  const checkSessionStatus = async (issueNumber: number, sessionId: string) => {
+  const checkSessionStatus = useCallback(async (issueNumber: number, sessionId: string) => {
+    if (!devinApiKey) return
+    
     try {
       const response = await fetch(
         `${API_URL}/api/session/${sessionId}?devin_api_key=${encodeURIComponent(devinApiKey)}`
@@ -166,9 +182,11 @@ function App() {
     } catch (err) {
       console.error('Failed to check session status:', err)
     }
-  }
+  }, [devinApiKey])
 
   useEffect(() => {
+    if (!devinApiKey) return
+
     const interval = setInterval(() => {
       Object.entries(sessions).forEach(([issueNumber, session]) => {
         if (session.status === 'scoping' || session.status === 'implementing') {
@@ -178,7 +196,7 @@ function App() {
     }, 10000)
 
     return () => clearInterval(interval)
-  }, [sessions, devinApiKey])
+  }, [sessions, devinApiKey, checkSessionStatus])
 
   if (!configured) {
     return (
@@ -349,6 +367,23 @@ function App() {
                         </div>
                         {session.message && (
                           <p className="text-sm text-slate-600 mb-2">{session.message}</p>
+                        )}
+                        {session.confidence_score !== undefined && (
+                          <div className="mb-2">
+                            <span className="text-sm font-semibold">Confidence Score: </span>
+                            <Badge variant={
+                              session.confidence_score >= 80 ? 'default' :
+                              session.confidence_score >= 50 ? 'secondary' : 'destructive'
+                            }>
+                              {session.confidence_score}/100
+                            </Badge>
+                          </div>
+                        )}
+                        {session.action_plan && (
+                          <div className="mb-2">
+                            <span className="text-sm font-semibold block mb-1">Action Plan:</span>
+                            <p className="text-sm text-slate-600 whitespace-pre-wrap">{session.action_plan}</p>
+                          </div>
                         )}
                         {session.session_url && (
                           <a 
