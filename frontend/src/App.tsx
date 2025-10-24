@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
-import { GitBranch, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { GitBranch, CheckCircle, AlertCircle, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -41,6 +43,8 @@ function App() {
   const [error, setError] = useState('')
   const [sessions, setSessions] = useState<Record<number, Session>>({})
   const [configured, setConfigured] = useState(false)
+  const [expandedIssues, setExpandedIssues] = useState<Record<number, boolean>>({})
+  const [expandedActionPlans, setExpandedActionPlans] = useState<Record<number, boolean>>({})
 
   useEffect(() => {
     if (repo) localStorage.setItem('github_repo', repo)
@@ -319,9 +323,40 @@ function App() {
                             </Badge>
                           ))}
                         </div>
-                        <CardDescription className="line-clamp-3">
-                          {issue.body || 'No description provided'}
-                        </CardDescription>
+                        {issue.body && (
+                          <Collapsible
+                            open={expandedIssues[issue.number]}
+                            onOpenChange={(open) => 
+                              setExpandedIssues(prev => ({ ...prev, [issue.number]: open }))
+                            }
+                          >
+                            <div className="flex items-center gap-2">
+                              <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="p-0 h-auto font-normal text-slate-600 hover:text-slate-900">
+                                  {expandedIssues[issue.number] ? (
+                                    <>
+                                      <ChevronUp className="h-4 w-4 mr-1" />
+                                      Hide description
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="h-4 w-4 mr-1" />
+                                      Show description
+                                    </>
+                                  )}
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent className="mt-2">
+                              <div className="prose prose-sm max-w-none text-slate-700 bg-slate-50 p-3 rounded-md">
+                                <ReactMarkdown>{issue.body}</ReactMarkdown>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+                        {!issue.body && (
+                          <CardDescription>No description provided</CardDescription>
+                        )}
                       </div>
                       <a 
                         href={issue.html_url} 
@@ -381,8 +416,30 @@ function App() {
                         )}
                         {session.action_plan && (
                           <div className="mb-2">
-                            <span className="text-sm font-semibold block mb-1">Action Plan:</span>
-                            <p className="text-sm text-slate-600 whitespace-pre-wrap">{session.action_plan}</p>
+                            <Collapsible
+                              open={expandedActionPlans[issue.number]}
+                              onOpenChange={(open) => 
+                                setExpandedActionPlans(prev => ({ ...prev, [issue.number]: open }))
+                              }
+                            >
+                              <div className="flex items-center gap-2">
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="p-0 h-auto font-normal text-slate-600 hover:text-slate-900">
+                                    <span className="text-sm font-semibold">Action Plan:</span>
+                                    {expandedActionPlans[issue.number] ? (
+                                      <ChevronUp className="h-4 w-4 ml-1" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4 ml-1" />
+                                    )}
+                                  </Button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="mt-2">
+                                <div className="prose prose-sm max-w-none text-slate-700 bg-white p-3 rounded-md border border-slate-200">
+                                  <ReactMarkdown>{session.action_plan}</ReactMarkdown>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
                           </div>
                         )}
                         {session.session_url && (
