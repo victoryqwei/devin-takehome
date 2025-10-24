@@ -4,6 +4,8 @@ from pydantic import BaseModel
 import httpx
 import os
 import re
+import json
+from pathlib import Path
 from dotenv import load_dotenv
 from typing import List, Optional
 
@@ -21,6 +23,17 @@ app.add_middleware(
 )
 
 sessions_db = {}
+CONFIDENCE_SCORES_FILE = Path("confidence_scores.json")
+
+def load_confidence_scores():
+    if CONFIDENCE_SCORES_FILE.exists():
+        with open(CONFIDENCE_SCORES_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_confidence_scores(scores):
+    with open(CONFIDENCE_SCORES_FILE, "w") as f:
+        json.dump(scores, f, indent=2)
 
 def parse_confidence_and_plan(text: str):
     confidence_match = re.search(r'CONFIDENCE:\s*(\d+)', text, re.IGNORECASE)
@@ -259,7 +272,14 @@ async def get_session_status(session_id: str, devin_api_key: str):
                 **sessions_db[session_id]
             }
             
-            if sessions_db[session_id].get("type") == "scope" and "confidence_score" not in sessions_db[session_id]:
+            confidence_scores = load_confidence_scores()
+            session_key = f"{sessions_db[session_id]['repo']}:{sessions_db[session_id]['issue_number']}"
+            
+            if session_key in confidence_scores:
+                result["confidence_score"] = confidence_scores[session_key]["confidence_score"]
+                result["action_plan"] = confidence_scores[session_key]["action_plan"]
+                result["should_poll"] = False
+            elif sessions_db[session_id].get("type") == "scope":
                 try:
                     all_text = ""
                     for msg in session_data.get("messages", []):
@@ -269,17 +289,25 @@ async def get_session_status(session_id: str, devin_api_key: str):
                     if all_text:
                         confidence_score, action_plan = parse_confidence_and_plan(all_text)
                         if confidence_score is not None:
-                            sessions_db[session_id]["confidence_score"] = confidence_score
-                            sessions_db[session_id]["action_plan"] = action_plan
+                            confidence_scores[session_key] = {
+                                "confidence_score": confidence_score,
+                                "action_plan": action_plan,
+                                "session_id": session_id
+                            }
+                            save_confidence_scores(confidence_scores)
+                            
                             result["confidence_score"] = confidence_score
                             result["action_plan"] = action_plan
+                            result["should_poll"] = False
+                        else:
+                            result["should_poll"] = True
+                    else:
+                        result["should_poll"] = True
                 except Exception as e:
                     print(f"Failed to parse messages: {e}")
-            
-            if "confidence_score" in sessions_db[session_id]:
-                result["confidence_score"] = sessions_db[session_id]["confidence_score"]
-            if "action_plan" in sessions_db[session_id]:
-                result["action_plan"] = sessions_db[session_id]["action_plan"]
+                    result["should_poll"] = True
+            else:
+                result["should_poll"] = result["status"] in ["scoping", "implementing"]
             
             return result
         except httpx.HTTPError as e:

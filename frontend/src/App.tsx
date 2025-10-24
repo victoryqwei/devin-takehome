@@ -34,6 +34,7 @@ interface Session {
   issue_number?: number;
   confidence_score?: number;
   action_plan?: string;
+  should_poll?: boolean;
 }
 
 function App() {
@@ -203,7 +204,7 @@ function App() {
 
     const interval = setInterval(() => {
       Object.entries(sessions).forEach(([issueNumber, session]) => {
-        if (session.status === "scoping" || session.status === "implementing") {
+        if (session.should_poll !== false && (session.status === "scoping" || session.status === "implementing")) {
           checkSessionStatus(Number(issueNumber), session.session_id);
         }
       });
