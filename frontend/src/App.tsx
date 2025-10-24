@@ -43,7 +43,10 @@ function App() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [sessions, setSessions] = useState<Record<number, Session>>({});
+  const [sessions, setSessions] = useState<Record<number, Session>>(() => {
+    const savedSessions = localStorage.getItem("devin_sessions");
+    return savedSessions ? JSON.parse(savedSessions) : {};
+  });
   const [configured, setConfigured] = useState(false);
   const [expandedIssues, setExpandedIssues] = useState<Record<number, boolean>>({});
   const [expandedActionPlans, setExpandedActionPlans] = useState<Record<number, boolean>>({});
@@ -59,6 +62,10 @@ function App() {
   useEffect(() => {
     if (devinApiKey) localStorage.setItem("devin_api_key", devinApiKey);
   }, [devinApiKey]);
+
+  useEffect(() => {
+    localStorage.setItem("devin_sessions", JSON.stringify(sessions));
+  }, [sessions]);
 
   const loadIssues = async () => {
     if (!repo || !githubToken) {
