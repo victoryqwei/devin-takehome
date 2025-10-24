@@ -26,17 +26,20 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 **Purpose**: Provide a user-friendly interface for managing GitHub issues with Devin automation.
 
 **Key Components**:
+
 - Configuration screen for credentials
 - Issues dashboard with list view
 - Action buttons for scoping and completing issues
 - Real-time session status tracking
 
 **State Management**:
+
 - Local React state for UI state
 - Polling mechanism for session updates (10-second intervals)
 - Session data cached in component state
 
 **API Communication**:
+
 - RESTful API calls to backend
 - Async/await pattern for all API requests
 - Error handling with user-friendly messages
@@ -48,16 +51,19 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 **Endpoints**:
 
 1. `GET /api/issues`
+
    - Fetches open issues from GitHub repository
    - Parameters: repo, github_token
    - Returns: Array of issue objects
 
 2. `POST /api/scope`
+
    - Creates Devin session to analyze issue
    - Body: repo, issue_number, github_token, devin_api_key
    - Returns: Session ID and status
 
 3. `POST /api/complete`
+
    - Creates or continues Devin session to implement solution
    - Body: repo, issue_number, github_token, devin_api_key, session_id
    - Returns: Session ID and status
@@ -68,11 +74,13 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
    - Returns: Session status and metadata
 
 **Data Storage**:
+
 - In-memory dictionary for session tracking
 - Session data includes: repo, issue_number, status, type
 - Data persists during runtime only
 
 **External API Integration**:
+
 - GitHub API v3 (REST)
 - Devin API v1
 - Async HTTP client (httpx) for all external calls
@@ -121,15 +129,18 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## Security Considerations
 
 ### Authentication
+
 - GitHub tokens passed via API requests (not stored)
 - Devin API keys passed via API requests (not stored)
 - No persistent credential storage
 
 ### CORS
+
 - Enabled for all origins in development
 - Should be restricted to specific domains in production
 
 ### Data Privacy
+
 - No logging of sensitive tokens
 - Session data stored temporarily in memory
 - No persistent database (reduces attack surface)
@@ -137,11 +148,13 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## Scalability Considerations
 
 ### Current Limitations
+
 - In-memory storage limits to single instance
 - No horizontal scaling support
 - Session data lost on restart
 
 ### Future Improvements
+
 - Add Redis for distributed session storage
 - Implement database for persistent session history
 - Add caching layer for GitHub API responses
@@ -150,12 +163,14 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## Error Handling
 
 ### Frontend
+
 - Try-catch blocks around all API calls
 - User-friendly error messages
 - Loading states during async operations
 - Disabled buttons during processing
 
 ### Backend
+
 - HTTPException for API errors
 - Proper status codes (404, 500, etc.)
 - Error details in response body
@@ -164,12 +179,14 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## Performance Optimizations
 
 ### Frontend
+
 - Conditional rendering to minimize DOM updates
 - Debounced polling (10-second intervals)
 - Lazy loading of issue details
 - Efficient state updates with functional setState
 
 ### Backend
+
 - Async/await for non-blocking I/O
 - Connection pooling via httpx
 - Timeout configuration (30 seconds)
@@ -178,11 +195,13 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## Monitoring and Observability
 
 ### Current State
+
 - Console logging for debugging
 - HTTP status codes for error tracking
 - Session status for progress monitoring
 
 ### Recommended Additions
+
 - Structured logging (JSON format)
 - Application metrics (request counts, latencies)
 - Error tracking service integration
@@ -191,12 +210,14 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## Deployment Architecture
 
 ### Backend Deployment
+
 - Platform: Fly.io
 - Runtime: Python 3.12 with Poetry
 - Auto-scaling: Not configured
 - Health checks: /healthz endpoint
 
 ### Frontend Deployment
+
 - Platform: Static hosting (Vercel/Netlify/etc.)
 - Build: Vite production build
 - CDN: Automatic via hosting platform
@@ -205,11 +226,13 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## API Rate Limits
 
 ### GitHub API
+
 - Unauthenticated: 60 requests/hour
 - Authenticated: 5000 requests/hour
 - Recommendation: Always use authenticated requests
 
 ### Devin API
+
 - Varies by plan
 - Should implement retry logic with exponential backoff
 - Consider request queuing for high-volume scenarios
@@ -217,15 +240,18 @@ The GitHub Issues Integration is a full-stack application that bridges GitHub Is
 ## Testing Strategy
 
 ### Unit Tests (Not Implemented)
+
 - Backend: Test individual endpoint handlers
 - Frontend: Test component rendering and interactions
 
 ### Integration Tests (Not Implemented)
+
 - Test full flow from frontend to backend
 - Mock external API responses
 - Verify session state management
 
 ### Manual Testing (Completed)
+
 - Verified issue loading
 - Tested scoping functionality
 - Tested completion functionality
