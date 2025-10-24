@@ -1,0 +1,33 @@
+{
+  "name": "devin-takehome",
+  "version": "1.0.0",
+  "description": "GitHub Issues Integration with Devin AI",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && poetry run fastapi dev app/main.py --host 0.0.0.0 --port 8000",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "install:backend": "cd backend && poetry install",
+    "install:frontend": "cd frontend && npm install",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && poetry run fastapi run app/main.py --host 0.0.0.0 --port 8000",
+    "start:frontend": "cd frontend && npm run preview",
+    "lint": "npm run lint:frontend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "clean": "rm -rf frontend/node_modules frontend/dist backend/__pycache__ backend/.venv",
+    "setup": "npm run install:all"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.12.0"
+  },
+  "workspaces": [
+    "frontend"
+  ]
+}
