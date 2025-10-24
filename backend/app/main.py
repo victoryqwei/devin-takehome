@@ -91,6 +91,7 @@ async def scope_issue(request: ScopeRequest):
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28"
         }
+
         try:
             issue_response = await client.get(
                 f"https://api.github.com/repos/{request.repo}/issues/{request.issue_number}",
@@ -99,6 +100,7 @@ async def scope_issue(request: ScopeRequest):
             issue_response.raise_for_status()
             issue_data = issue_response.json()
         except httpx.HTTPError as e:
+            print(f"GitHub API error: {str(e)}")
             raise HTTPException(status_code=500, detail=f"GitHub API error: {str(e)}")
 
         devin_headers = {
@@ -145,6 +147,7 @@ ACTION PLAN:
                 "message": "Devin is analyzing the issue"
             }
         except httpx.HTTPError as e:
+            print(f"Devin API error: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Devin API error: {str(e)}")
 
 @app.post("/api/complete")
@@ -258,26 +261,20 @@ async def get_session_status(session_id: str, devin_api_key: str):
             
             if sessions_db[session_id].get("type") == "scope" and "confidence_score" not in sessions_db[session_id]:
                 try:
-                    messages_response = await client.get(
-                        f"https://api.devin.ai/v1/sessions/{session_id}/messages",
-                        headers=devin_headers
-                    )
-                    if messages_response.status_code == 200:
-                        messages_data = messages_response.json()
-                        all_text = ""
-                        for msg in messages_data.get("messages", []):
-                            if msg.get("role") == "assistant":
-                                all_text += msg.get("content", "") + "\n"
-                        
-                        if all_text:
-                            confidence_score, action_plan = parse_confidence_and_plan(all_text)
-                            if confidence_score is not None:
-                                sessions_db[session_id]["confidence_score"] = confidence_score
-                                sessions_db[session_id]["action_plan"] = action_plan
-                                result["confidence_score"] = confidence_score
-                                result["action_plan"] = action_plan
+                    all_text = ""
+                    for msg in session_data.get("messages", []):
+                        if msg.get("type") == "devin_message":
+                            all_text += msg.get("message", "") + "\n"
+                    
+                    if all_text:
+                        confidence_score, action_plan = parse_confidence_and_plan(all_text)
+                        if confidence_score is not None:
+                            sessions_db[session_id]["confidence_score"] = confidence_score
+                            sessions_db[session_id]["action_plan"] = action_plan
+                            result["confidence_score"] = confidence_score
+                            result["action_plan"] = action_plan
                 except Exception as e:
-                    print(f"Failed to fetch messages: {e}")
+                    print(f"Failed to parse messages: {e}")
             
             if "confidence_score" in sessions_db[session_id]:
                 result["confidence_score"] = sessions_db[session_id]["confidence_score"]
